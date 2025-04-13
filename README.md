@@ -34,3 +34,6 @@ python manage.py runserver
 ```
 docker-compose up
 ```
+
+
+![app view](app_view.png)
