@@ -1,1 +1,4 @@
 .venv
+app_view.png
+**/__pycache__/
+static
