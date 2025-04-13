@@ -1,0 +1,49 @@
+{% extends "accounts/base.html" %} 
+{% block title %}<title>Вход</title>{%endblock title %} 
+{% block content %}
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h1 class="card-title text-center mb-4" style="font-size: 1.8rem; white-space: nowrap;">C Возвращением!</h1>
+
+    {% if form.errors %}
+    <div class="alert alert-danger" role="alert">
+      Неверное имя пользователя или пароль. Пожалуйста, попробуйте снова.
+    </div>
+    {% endif %}
+
+    <form method="POST">
+      {% csrf_token %}
+
+      <div class="mb-3">
+        <label for="id_username" class="form-label">Имя пользователя</label>
+        <input
+          type="text"
+          name="username"
+          class="form-control"
+          id="id_username"
+          required
+        />
+      </div>
+
+      <div class="mb-3">
+        <label for="id_password" class="form-label">Пароль</label>
+        <input
+          type="password"
+          name="password"
+          class="form-control"
+          id="id_password"
+          required
+        />
+      </div>
+
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-box-arrow-in-right"></i> Войти
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+{% endblock content %}

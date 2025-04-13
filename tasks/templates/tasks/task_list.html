@@ -1,0 +1,214 @@
+{% extends 'tasks/base.html' %} 
+{% block title %}Список задач{% endblock%} 
+{% block content %}
+<div class="row mb-4">
+  <div class="col">
+    <h1>Список задач</h1>
+  </div>
+  <div class="col-auto">
+    <a href="{% url 'task_create' %}" class="btn btn-primary">
+      <i class="bi bi-plus-lg"></i> Новая задача
+    </a>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">
+    <div class="row">
+      <div class="col">
+        <form method="get" class="row g-2">
+          <div class="col-md-3">
+            <select name="status" class="form-select">
+              <option value="">Все статусы</option>
+              {% for value, label in status_choices %}
+              <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <select name="priority" class="form-select">
+              <option value="">Все приоритеты</option>
+              {% for value, label in priority_choices %}
+              <option value="{{ value }}" {% if request.GET.priority == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <input
+              type="date"
+              name="due_date"
+              class="form-control"
+              value="{{ request.GET.due_date }}"
+              placeholder="Дедлайн"
+            />
+          </div>
+          <div class="col-md-3 mb-3">
+            <select name="assigned_to" class="form-select">
+                <option value="">Все исполнители</option>
+                {% for user in assignees %}
+                <option value="{{ user.id }}" 
+                        {% if request.GET.assigned_to == user.id|stringformat:"s" %}selected{% endif %}>
+                    {{ user.username }}
+                </option>
+                {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6"></div>
+          <div class="col-md-6">
+            <div class="d-flex justify-content-end">
+              <button type="submit" class="btn btn-primary me-2">Фильтровать</button>
+              <a href="{% url 'task_list' %}" class="btn btn-outline-secondary">Сбросить</a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="row mt-3">
+        <div class="col">
+            <div class="btn-group" role="group">
+                <a href="?next_7_days=1" class="btn btn-outline-primary">
+                    Ближайшие 7 дней
+                </a>
+                <a href="?high_priority=1" class="btn btn-outline-danger">
+                    Высокий приоритет
+                </a>
+                <a href="?overdue=1" class="btn btn-outline-warning">
+                    Просроченные
+                </a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <form method="get" class="input-group">
+                <input type="text" name="search" class="form-control" 
+                       placeholder="Поиск..." value="{{ request.GET.search }}">
+                <button class="btn btn-primary" type="submit">
+                    <i class="bi bi-search"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Название</th>
+            <th>
+                <a href="?sort=status&order={% if current_sort == 'status' and current_order == 'asc' %}desc{% else %}asc{% endif %}{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'order' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                    Статус
+                    {% if current_sort == 'status' %}
+                        {% if current_order == 'asc' %}&uarr;{% else %}&darr;{% endif %}
+                    {% endif %}
+                </a>
+            </th>
+            <th>
+                <a href="?sort=priority&order={% if current_sort == 'priority' and current_order == 'asc' %}desc{% else %}asc{% endif %}{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'order' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                    Приоритет
+                    {% if current_sort == 'priority' %}
+                        {% if current_order == 'asc' %}&uarr;{% else %}&darr;{% endif %}
+                    {% endif %}
+                </a>
+            </th>
+            <th>
+                <a href="?sort=due_date&order={% if current_sort == 'due_date' and current_order == 'asc' %}desc{% else %}asc{% endif %}{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'order' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                    Дедлайн
+                    {% if current_sort == 'due_date' %}
+                        {% if current_order == 'asc' %}&uarr;{% else %}&darr;{% endif %}
+                    {% endif %}
+                </a>
+            </th>
+            <th>Исполнитель</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for task in tasks %}
+          <tr
+            class="priority-{{ task.priority }} {% if task.status == 'completed' %}completed{% endif %} {% if task.is_overdue %}overdue{% endif %}"
+          >
+            <td>
+              <a href="{% url 'task_detail' task.pk %}">{{ task.title }}</a>
+              {% if task.is_overdue %}
+              <span class="badge bg-danger">Просрочена</span>
+              {% endif %}
+            </td>
+            <td>{{ task.get_status_display }}</td>
+            <td>{{ task.get_priority_display }}</td>
+            <td>
+              {% if task.due_date %} {{ task.due_date|date:"d.m.Y H:i" }} {% else %} — {% endif %}
+            </td>
+            <td>
+              {% if task.assigned_to %} {{ task.assigned_to.username }} {% else %} Не назначен {% endif %}
+            </td>
+            <td>
+              <div class="btn-group btn-group-sm">
+                <a href="{% url 'task_update' task.pk %}" class="btn btn-outline-secondary">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <a href="{% url 'task_delete' task.pk %}" class="btn btn-outline-danger">
+                  <i class="bi bi-trash"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center">Задачи не найдены</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if is_paginated %}
+<nav aria-label="Page navigation">
+  <ul class="pagination justify-content-center">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a
+        class="page-link"
+        href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+      >
+        &laquo; Первая
+      </a>
+    </li>
+    <li class="page-item">
+      <a
+        class="page-link"
+        href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+      >
+        Предыдущая
+      </a>
+    </li>
+    {% endif %}
+
+    <li class="page-item disabled">
+      <span class="page-link">
+        Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}
+      </span>
+    </li>
+
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a
+        class="page-link"
+        href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+      >
+        Следующая
+      </a>
+    </li>
+    <li class="page-item">
+      <a
+        class="page-link"
+        href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+      >
+        Последняя &raquo;
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %} {% endblock %}

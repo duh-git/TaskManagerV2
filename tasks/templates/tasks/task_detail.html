@@ -1,0 +1,201 @@
+{% extends 'tasks/base.html' %} 
+{% load history_tags %}
+{% block title %}{{ task.title }}{% endblock %} 
+{% block content %}
+<div class="row mb-4">
+  <div class="col">
+    <h1>{{ task.title }}</h1>
+  </div>
+  <div class="col-auto">
+    <div class="btn-group">
+      <a href="{% url 'task_update' task.pk %}" class="btn btn-primary">
+        <i class="bi bi-pencil"></i> Редактировать
+      </a>
+      <a href="{% url 'task_delete' task.pk %}" class="btn btn-danger">
+        <i class="bi bi-trash"></i> Удалить
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-8">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Описание задачи</h5>
+      </div>
+      <div class="card-body">
+        {% if task.description %}
+        <p>{{ task.description }}</p>
+        {% else %}
+        <p class="text-muted">Описание отсутствует</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">История изменений</h5>
+      </div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+            {% for record in task.history.all %}
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between">
+                <div>
+                  {% if forloop.first %}
+                    <strong>Создана задача</strong>
+                  {% else %}
+                    <strong>Изменения:</strong>
+                    {% with prev_record=task.history.all|slice:forloop.counter0|first %}
+                      {% for change in prev_record|get_changes:record %}
+                        <div>
+                          {{ change.field|title }}: 
+                          {{ change.old|display_value:change.field }} → 
+                          {{ change.new|display_value:change.field }}
+                        </div>
+                      {% empty %}
+                        <div>Нет изменений полей</div>
+                      {% endfor %}
+                    {% endwith %}
+                  {% endif %}
+                  {% if record.history_change_reason %}
+                    <div class="text-muted">Причина: {{ record.history_change_reason }}</div>
+                  {% endif %}
+                </div>
+                <small class="text-muted">
+                  {{ record.history_date|date:"d.m.Y H:i" }}<br>
+                  {{ record.history_user.username|default:"Система" }}
+                </small>
+              </div>
+            </li>
+          {% empty %}
+            <li class="list-group-item">История изменений отсутствует</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Детали</h5>
+      </div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Статус:</span>
+            <span
+              class="badge bg-{% if task.status == 'completed' %}success{% elif task.status == 'cancelled' %}danger{% else %}primary{% endif %}"
+            >
+              {{ task.get_status_display }}
+            </span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Приоритет:</span>
+            <span
+              class="badge bg-{% if task.priority >= 4 %}danger{% elif task.priority == 3 %}warning{% else %}success{% endif %}"
+            >
+              {{ task.get_priority_display }}
+            </span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Создана:</span>
+            <span>{{ task.created_at|date:"d.m.Y H:i" }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Обновлена:</span>
+            <span>{{ task.updated_at|date:"d.m.Y H:i" }}</span>
+          </li>
+          {% if task.start_date %}
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Начало:</span>
+            <span>{{ task.start_date|date:"d.m.Y H:i" }}</span>
+          </li>
+          {% endif %} {% if task.due_date %}
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Дедлайн:</span>
+            <span class="{% if task.is_overdue %}text-danger{% endif %}">
+              {{ task.due_date|date:"d.m.Y H:i" }} 
+              {% if task.is_overdue %}
+              <span class="badge bg-danger">Просрочена</span>
+              {% endif %}
+            </span>
+          </li>
+          {% endif %} {% if task.completed_at %}
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Завершена:</span>
+            <span>{{ task.completed_at|date:"d.m.Y H:i" }}</span>
+          </li>
+          {% endif %}
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Исполнитель:</span>
+            <span>
+              {% if task.assigned_to %} 
+              {{task.assigned_to.get_full_name|default:task.assigned_to.username}} 
+              {% else %} Не назначен {% endif %}
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+          <h5 class="mb-0">Назначить исполнителя</h5>
+        </div>
+        <div class="card-body">
+          <form method="post" action="{% url 'task_assign' task.pk %}">
+            {% csrf_token %}
+            <div class="input-group mb-3">
+              <select name="assigned_to" class="form-select">
+                <option value="">-- Не назначено --</option>
+                {% for user in assignable_users %}
+                  <option value="{{ user.id }}" 
+                    {% if task.assigned_to == user %}selected{% endif %}>
+                    {{ user.get_full_name|default:user.username }}
+                  </option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn btn-success">
+                <i class="bi bi-person-check"></i> Назначить
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Изменить статус</h5>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{% url 'task_change_status' task.pk %}">
+          {% csrf_token %}
+          <div class="input-group">
+            <select name="status" class="form-select">
+              {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if task.status == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">Обновить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+    .changes-container {
+        border-left: 3px solid #eee;
+        padding-left: 10px;
+    }
+    .change-item {
+        margin-bottom: 5px;
+        padding: 3px;
+        background-color: #f8f9fa;
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}
