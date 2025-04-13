@@ -13,9 +13,10 @@ pip install -r requirements.txt
 python manage.py collectstatic
 ```
 
-## Database
+## Create and Seed Database
 ```
 python manage.py migrate
+python manage.py seed_db
 ```
 
 ## Create Superuser
